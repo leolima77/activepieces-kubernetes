@@ -1,0 +1,113 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: activepieces
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: activepieces
+  namespace: activepieces
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: activepieces
+  template:
+    metadata:
+      labels:
+        app: activepieces
+    spec:
+      containers:
+        - name: activepieces
+          image: activepieces/activepieces:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: DATABASE_URL
+              value: postgres://your-user:your-password@your-ip:your-port/ActivePieces
+
+            # PostgreSQL config
+            - name: AP_POSTGRES_HOST
+              value: your-ip
+            - name: AP_POSTGRES_PORT
+              value: "your-port"
+            - name: AP_POSTGRES_USERNAME
+              value: your-user
+            - name: AP_POSTGRES_PASSWORD
+              value: your-password
+            - name: AP_POSTGRES_DATABASE
+              value: ActivePieces # you need to create database in postgres previously
+
+            # Redis config
+            - name: REDIS_HOST
+              value: your-ip
+            - name: REDIS_PORT
+              value: "your-port"
+            - name: REDIS_PASSWORD
+              value: your-password
+            - name: AP_REDIS_HOST
+              value: your-ip
+            - name: AP_REDIS_PORT
+              value: "your-port"
+            - name: AP_REDIS_PASSWORD
+              value: your-password
+
+            # API URL
+            - name: PIECES_API_URL
+              value: http://127.0.0.1
+
+            - name: AP_ENCRYPTION_KEY
+              value: your-encryption-key
+
+            - name: AP_JWT_SECRET
+              value: your-jwt-secret
+#
+            - name: AP_FRONTEND_URL
+              value: "http://activepieces.example.com/"
+#
+            - name: AP_ENVIRONMENT
+              value: prod
+#
+            - name: AP_EXECUTION_MODE
+              value: UNSANDBOXED
+
+            - name: AP_WEBHOOK_TIMEOUT_SECONDS
+              value: "30"
+
+            - name: AP_TRIGGER_DEFAULT_POLL_INTERVAL
+              value: "1"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: activepieces-service
+  namespace: activepieces
+spec:
+  selector:
+    app: activepieces
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: activepieces-ingress
+  namespace: activepieces
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: activepieces.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: activepieces-service
+                port:
+                  number: 80
